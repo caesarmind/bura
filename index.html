@@ -820,8 +820,7 @@ html.mg-fluid { font-size: clamp(11px, 1.1111vw, 17px); }
   .bu-board--tall .bu-oseat, .bu-board--tall .bu-pile--opp { margin-top: calc(.75rem + 2.75rem + .7rem); }
   .bu-board--tall .bu-mseat { margin-bottom: calc(.75rem + 2.75rem + .7rem); }
   .bu-board--tall .bu-seat .jk-seat__chip { display: none; }
-  .bu-board--land { --c: clamp(56px, min(23cqh, 11.5cqw), 124px); --av: clamp(2.5rem, 12cqh, 3.4rem); }
-  .bu-board--land.is-video { --av: clamp(2.75rem, 12cqh, 3.4rem); }   /* with video on a circle is a button (the face, bigger): a finger's 44 px */
+  .bu-board--land { --c: clamp(56px, min(23cqh, 11.5cqw), 124px); --av: clamp(2.75rem, min(19cqh, 9cqw), 5rem); }   /* the faces are big enough to be cameras: ~60-75 px */
   .bu-probe { position: absolute; width: 1px; height: var(--c); visibility: hidden; pointer-events: none; }
 
   /* the corners: the menu at the top-left, chat and settings at the top-right, the last trick at the bottom-left */
@@ -965,7 +964,7 @@ html.mg-fluid { font-size: clamp(11px, 1.1111vw, 17px); }
   .is-waiting { visibility: hidden; }
 
   /* ── A phone upright: one column — their fan, their seat and pile, the table, your line, your seat and pile, your hand ── */
-  .bu-board--stack { --c: clamp(60px, min(25cqw, 14.5cqh), 132px); --av: 2.9rem;
+  .bu-board--stack { --c: clamp(60px, min(25cqw, 14.5cqh), 132px); --av: clamp(3.5rem, 17cqw, 5rem);   /* a face you can see — later a camera: ~60-66 px on a phone */
     grid-template-rows: 3.5rem auto minmax(0, 1fr) auto auto auto;   /* the first row is the corners' and the fan's strip, whatever the fan holds */
     grid-template-areas: ". ofan ." "oseat oseat opile" "mid mid mid" "act act act" "mseat mseat mpile" "hand hand hand"; }
   .bu-board--stack .bu-fan { --fc: calc(var(--c) * .8); margin-top: calc(3.1rem - var(--fc)); min-height: 0; }   /* 3.1 rem of the backs show below the safe area (the notch, the status bar), between the corners */
@@ -990,9 +989,20 @@ html.mg-fluid { font-size: clamp(11px, 1.1111vw, 17px); }
   .bu-board--land .bu-seat .jk-seat__chip { display: none; }
   .bu-board--land .bu-eyes { padding: .25rem .5rem .25rem .4rem; }
   .bu-board--land .bu-eyes b { font-size: 1rem; }
-  .bu-board--land .bu-act { flex-direction: row; align-items: center; justify-content: center; gap: .6rem; height: calc(3.3rem + var(--c) * .2); padding-top: .2rem; }   /* short screen: the line beside the buttons, one row */
-  .bu-board--land .bu-act .bu-btns { flex-wrap: nowrap; }
-  .bu-board--land .bu-btns .mg-btn { height: 2.75rem; min-width: 6rem; }   /* a finger's 44 px, even on a short screen */
+  /* on its side the height is the short side: no strip under the table at all (its row collapses, so the table gets the
+     whole height). Your buttons stand in a column at the right edge, where the right thumb is, your line over them: over the
+     board, clear of the cards (fitPlay keeps the column's room); with video on, above your mic and camera. Nothing about
+     them moves the table. */
+  .bu-board--land .bu-act { position: absolute; grid-area: auto; left: auto; top: auto; right: calc(.75rem + env(safe-area-inset-right, 0px)); bottom: calc(.75rem + env(safe-area-inset-bottom, 0px)); width: auto; max-width: 60%; height: auto; padding: 0; flex-direction: column; align-items: flex-end; justify-content: flex-end; gap: .45rem; }
+  .bu-board--land .bu-act .jk-act { text-align: right; }
+  .bu-board--land.is-video .bu-act { bottom: calc(.75rem + 2.75rem + .5rem + env(safe-area-inset-bottom, 0px)); }   /* on the corners' edges, just above your mic and camera */
+  .bu-board--land .bu-act .bu-btns { flex-direction: column; align-items: stretch; flex-wrap: nowrap; gap: .4rem; }   /* three stay clear of the corner on a 264 px screen (a Fold's cover, on its side) */
+  /* a fourth button (a combination while you answer) starts a second column, to the left and at the bottom, below the cards,
+     rather than climbing into the corner */
+  .bu-board--land .bu-act .bu-btns:has(> :nth-child(4)) { display: grid; grid-auto-flow: column; grid-template-rows: repeat(3, auto); direction: rtl; }
+  .bu-board--land .bu-act .bu-btns:has(> :nth-child(4)) > * { direction: ltr; }
+  .bu-board--land .bu-act .bu-btns > :nth-child(4) { grid-row: 3; }
+  .bu-board--land .bu-btns .mg-btn { height: 2.75rem; min-width: 7rem; }   /* a finger's 44 px, even on a short screen */
   .bu-board--land .bu-stock { left: calc(1rem + env(safe-area-inset-left, 0px)); }   /* at the edge (past the notch), clear of the bot's seat and what it says */
   .bu-board--land .bu-oseat .bu-bubble { left: 0; transform: none; }   /* under the circle, reaching right toward the middle, not left over the stock */
   .bu-board--land .bu-hand--5 .jk-card + .jk-card { margin-left: var(--ov, calc(var(--w) * -.2)); }   /* short cards and room to spare: five spread as three do */
@@ -5899,7 +5909,10 @@ module.exports = {
   function fitPlay() {
     var el = $('play'), mid = $('mid'), stock = $('stock'); if (!el || !mid) return;
     var W = mid.clientWidth, H = mid.clientHeight, c = cardH(), sw = stock.offsetLeft + stock.offsetWidth + 14;
-    var room = mode === 'stack' ? W - sw - 10 : W - 2 * sw, n = +el.dataset.n || 0, pc;
+    // on its side your buttons stand at the right edge over the board: keep their column's room free — always the widest
+    // they get (7rem), whatever they show now, so the cards never move when the buttons come and go
+    var act = $('act'), rw = mode === 'land' && act ? Math.max(sw, (parseFloat(getComputedStyle(act).right) || 16) + 7 * parseFloat(getComputedStyle(document.documentElement).fontSize) + 12) : sw;
+    var room = mode === 'stack' ? W - sw - 10 : W - sw - rw, n = +el.dataset.n || 0, pc, pw, tw = 0;
     el.style.top = '';
     if (el.classList.contains('is-call')) {   // the colour call: taller than the middle on a small phone — it hangs from the top and uses the strip below, empty while it is up
       el.style.left = ''; el.style.removeProperty('--pc');
@@ -5915,6 +5928,7 @@ module.exports = {
       var ov = n > 1 ? Math.min(tight, Math.max(.45, 1 - (room / (.7 * pc) - 1) / (n - 1))) : .45;
       el.style.setProperty('--rov', String(-ov));
       pc = Math.min(pc, room / (.7 * (1 + (n - 1) * (1 - ov))));
+      pw = .7 * pc * (1 + (n - 1) * (1 - ov));
     } else {
       // the combination's name goes under the cards — beside them on a phone on its side, where height is what is short, and
       // there it hangs outside the cards' box, so the cards keep their size whatever the name grows to (Bura → Royal Bura +7);
@@ -5924,9 +5938,16 @@ module.exports = {
       var perW = solo ? .7 * 1.1 : .7 * 1.52, perH = solo ? 1.02 : 1.36;
       pc = Math.min(c, room / Math.max(1, cols * perW), (H - tagH) / (rows * perH + (rows - 1) * .08));
       el.style.setProperty('--cols', cols);
+      pw = cols * perW * pc;
+      if (tag && mode === 'land') tw = tag.offsetWidth + 10;   // the name hangs to the right of the cards: it needs the room too
     }
     el.style.setProperty('--pc', Math.max(38, Math.floor(pc)) + 'px');
-    el.style.left = mode === 'stack' ? (sw + room / 2) + 'px' : '';
+    // in the middle of the screen, unless that would put the cards (and a combination's name beside them) under the stock
+    // or the buttons: then as near the middle as the room allows. Too little room for both (a Royal's long name on a
+    // notched phone): the cards stay clear of the stock and the name may reach the buttons' column, empty by then
+    if (mode === 'stack') { el.style.left = (sw + room / 2) + 'px'; return; }
+    var lo = sw + pw / 2, hi = W - rw - tw - pw / 2, cx = Math.max(lo, Math.min(W / 2, hi));
+    el.style.left = Math.abs(cx - W / 2) < 1 ? '' : Math.round(cx) + 'px';
   }
   function callHTML(tb) {
     var mine = tb.caller === ME, h = '<div class="bu-call">';
@@ -5951,10 +5972,10 @@ module.exports = {
     var h = '', my = s.toAct === ME, b = '';
     if (s.phase === 'color_call') h = '';   // the call's own panel says who is guessing: no second line under it
     else if (!LIVE[s.phase]) h = '';
-    else if (!my) h = line(t('wait'), true);
+    else if (!my) h = mode === 'land' ? '' : line(t('wait'), true);   // on its side the bot's lit circle says it; the table keeps the room
     else if (s.phase === 'raise_offer' && s.raiseOffer) {
       var L = s.raiseOffer.level;
-      h = line(mode === 'land' ? '<b>' + raiseWord(L) + ' ×' + L + '</b>' : t('offer', { name: esc(P[OPP].name), call: raiseWord(L), n: L }));   // on its side the line stands beside three buttons: the call alone (the bot's bubble says who)
+      h = mode === 'land' ? '' : line(t('offer', { name: esc(P[OPP].name), call: raiseWord(L), n: L }));   // on its side the bot's bubble says it (Davi!), and three buttons are all the column has room for
       b = btn(t('accept'), 'accept', 'primary') + btn(t('fold'), 'fold') + (s.raiseOffer.canCounter ? raiseBtn(L + 1, 'counter') : '');
     } else if (s.phase === 'declare_window') {
       b = btn(t('cont'), 'cont', 'primary') + btn(t('declare', { t: s.winTarget }), 'declare');
